@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Dashboard | Motz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Don't forget Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #f4f8fb;
+        }
+        .stat-card {
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            background: #ffffff;
+            transition: all 0.3s ease-in-out;
+        }
+    
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        }
+    
+        .stat-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #333;
+        }
+    
+        .stat-value {
+            font-weight: 800;
+            font-size: 2.2rem;
+            background: linear-gradient(to right, #007bff, #00c6ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+    
+        .icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: linear-gradient(to right, #007bff, #00c6ff);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+        .greeting {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+{% include "service/customer/navbar.html" %}
+
+<div class="container greeting text-center">
+    <h2 class="mb-3">Welcome, {{ request.user.first_name|default:request.user.username }} {{ request.user.last_name }}</h2>
+    <p class="text-muted">Here is a summary of your loan activity</p>
+
+    <div class="row g-4 mt-5 text-center">
+        <div class="col-md-3">
+            <div class="p-4 stat-card">
+                <div class="d-flex justify-content-center mb-2">
+                    <div class="icon-box"><i class="bi bi-file-earmark-text"></i></div>
+                </div>
+                <div class="stat-title">Total Loans</div>
+                <p class="stat-value">{{ total_loans }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-4 stat-card">
+                <div class="d-flex justify-content-center mb-2">
+                    <div class="icon-box"><i class="bi bi-check-circle"></i></div>
+                </div>
+                <div class="stat-title">Approved Loans</div>
+                <!-- Approved Loans -->
+                <p class="stat-value">{{ approved_loans }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-4 stat-card">
+                <div class="d-flex justify-content-center mb-2">
+                    <div class="icon-box"><i class="bi bi-x-circle"></i></div>
+                </div>
+                <div class="stat-title">Not Approved Loans</div>
+                <!-- Unapproved Loans -->
+                <p class="stat-value">{{ unapproved_loans }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-4 stat-card">
+                <div class="d-flex justify-content-center mb-2">
+                    <div class="icon-box"><i class="bi bi-currency-dollar"></i></div>
+                </div>
+                <div class="stat-title">Outstanding Balance</div>
+                <!-- Outstanding Balance -->
+                <p class="stat-value">M{{ outstanding_balance|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+    
+
+    <a href="{% url 'apply_loan' %}" class="btn btn-primary mt-4" style="background: linear-gradient(to right, #007bff, #00c6ff);">Apply for a New Loan</a>
+</div>
+
+</body>
+</html>
