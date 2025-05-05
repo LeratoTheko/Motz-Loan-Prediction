@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Motz Loan Prediction</title>
 
-    <!-- Outfit Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Outfit + Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -16,73 +16,132 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
     <style>
+        :root {
+            --primary: #0b5ed7;
+            --accent: #00d4ff;
+            --dark: #0a0f29;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
-            background: #f8f9fa;
+            background-color: #f4f6f8;
+            color: #333;
+            scroll-behavior: smooth;
         }
 
         .navbar {
-            background: linear-gradient(to right, #007bff, #00c6ff);
-        }
-
-        .navbar .navbar-brand, .navbar .nav-link, .navbar .btn {
-            color: white !important;
-        }
-
-        .navbar .btn-outline-light:hover {
             background-color: white;
-            color: #007bff !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary) !important;
+            font-size: 1.5rem;
+        }
+
+        .navbar .btn {
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary);
+            color: white;
         }
 
         .hero {
-            background: linear-gradient(to right, #007bff, #00c6ff);
+            background: linear-gradient(to right, #0b5ed7, #00d4ff);
             color: white;
-            padding: 80px 0;
+            padding: 100px 0;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            filter: blur(100px);
+            z-index: 0;
+        }
+
+        .hero .container {
+            position: relative;
+            z-index: 1;
         }
 
         .hero h1 {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 700;
+            margin-bottom: 20px;
         }
 
         .hero p {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             font-weight: 300;
         }
 
         .btn-hero {
-            margin-top: 20px;
-            padding: 12px 30px;
+            margin-top: 30px;
+            padding: 14px 36px;
             font-size: 1.1rem;
-            border-radius: 30px;
-            font-weight: 500;
+            border-radius: 50px;
+            font-weight: 600;
         }
 
         .features {
-            background-color: white;
-            padding: 60px 0;
+            padding: 80px 0;
         }
 
         .features h4 {
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
-        .features p {
-            font-weight: 300;
+        .features .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .features .card:hover {
+            transform: translateY(-5px);
         }
 
         .trust-section {
-            background: #eef9ff;
-            padding: 60px 0;
+            background-color: #eef4ff;
+            padding: 80px 0;
+        }
+
+        .trust-section h3 {
+            font-size: 2rem;
+            font-weight: 700;
         }
 
         .footer {
-            background: #111;
-            color: white;
-            padding: 20px 0;
+            background: var(--dark);
+            color: #aaa;
+            padding: 30px 0;
             text-align: center;
+        }
+
+        .footer p {
+            margin: 0;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -91,10 +150,14 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#">Motz Loan Predictor</a>
+            <a class="navbar-brand" href="#">Motz Loan Predictor</a>
             <div class="d-flex ms-auto">
-                <a class="btn btn-outline-light me-2" href="{% url 'login' %}">Apply Now</a>
-                <a class="btn btn-light text-secondary fw-bold" href="#" style="color: blue;">Admin Login</a>
+                {% if user.is_authenticated %}
+                    <a class="btn btn-outline-primary me-2" href="{% url 'dashboard' %}">Apply Now</a>
+                {% else %}
+                    <a class="btn btn-outline-primary me-2" href="{% url 'login' %}">Apply Now</a>
+                {% endif %}
+                <a class="btn btn-primary text-white fw-semibold" href="{% url 'admin_dashboard' %}">Admin Login</a>
             </div>
         </div>
     </nav>
@@ -103,26 +166,36 @@
     <section class="hero">
         <div class="container">
             <h1>Smart Loan Approval with AI</h1>
-            <p>Check your loan eligibility instantly using intelligent machine learning models.</p>
-            <a href="{% url 'login' %}" class="btn btn-light btn-hero text-primary">Get Started</a>
+            <p>Instant loan eligibility checks powered by intelligent algorithms.</p>
+            {% if user.is_authenticated %}
+                <a href="{% url 'dashboard' %}" class="btn btn-light btn-hero text-primary">Get Started</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-light btn-hero text-primary">Get Started</a>
+            {% endif %}
         </div>
     </section>
 
     <!-- Features Section -->
     <section class="features text-center">
         <div class="container">
-            <div class="row g-5">
+            <div class="row g-4">
                 <div class="col-md-4">
-                    <h4>Fast Predictions</h4>
-                    <p>Get instant insights into your loan eligibility with just a few clicks.</p>
+                    <div class="card">
+                        <h4>⚡ Fast Predictions</h4>
+                        <p>Get real-time feedback on your eligibility in just seconds.</p>
+                    </div>
                 </div>
                 <div class="col-md-4">
-                    <h4>AI Powered</h4>
-                    <p>Backed by robust machine learning models for accurate evaluations.</p>
+                    <div class="card">
+                        <h4>🤖 AI Powered</h4>
+                        <p>Backed by powerful machine learning for unmatched accuracy.</p>
+                    </div>
                 </div>
                 <div class="col-md-4">
-                    <h4>Secure & Reliable</h4>
-                    <p>We value your privacy — your data stays safe and encrypted.</p>
+                    <div class="card">
+                        <h4>🔐 Secure & Reliable</h4>
+                        <p>Your data is encrypted and protected with bank-grade security.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -131,16 +204,16 @@
     <!-- Trust Section -->
     <section class="trust-section text-center">
         <div class="container">
-            <h3 class="fw-bold mb-4">Why Thousands Trust Motz</h3>
+            <h3 class="fw-bold mb-5">Why Thousands Trust Motz</h3>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <p>✔ Trusted by banks and institutions</p>
+                    <p>✔ Trusted by leading financial institutions</p>
                 </div>
                 <div class="col-md-4">
                     <p>✔ Over 95% prediction accuracy</p>
                 </div>
                 <div class="col-md-4">
-                    <p>✔ Real-time results & transparent decisioning</p>
+                    <p>✔ Transparent, fast, and data-driven decisions</p>
                 </div>
             </div>
         </div>
@@ -149,7 +222,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p class="mb-0">© 2025 Motz Financial Services. All rights reserved.</p>
+            <p>© 2025 Motz Financial Services. All rights reserved.</p>
         </div>
     </footer>
 

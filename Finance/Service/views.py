@@ -8,11 +8,16 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.core.serializers.json import DjangoJSONEncoder
+import json
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count, Avg, Q
+from django.utils.timezone import now
+
 
 
 
 from .forms import LoanApplicationForm
-
 
 from .models import LoanApplication
 
@@ -73,6 +78,7 @@ def logout_view(request):
 
 
 
+
 @login_required(login_url='login')
 def dashboard_view(request):
     user_loans = LoanApplication.objects.filter(user=request.user)
@@ -80,36 +86,24 @@ def dashboard_view(request):
     approved_loans = user_loans.filter(predicted_status='Approved').count()
     unapproved_loans = user_loans.filter(predicted_status='Not Approved').count()
 
-    # For now, treat all "Approved" loans as "Outstanding" unless you add a 'paid' field later
     outstanding_balance = user_loans.filter(predicted_status='Approved').aggregate(
         total=Sum('loan_amount')
     )['total'] or 0
+
+    chart_data = {
+        'labels': ['Approved', 'Not Approved'],
+        'values': [approved_loans, unapproved_loans],
+    }
 
     context = {
         'total_loans': total_loans,
         'approved_loans': approved_loans,
         'unapproved_loans': unapproved_loans,
         'outstanding_balance': outstanding_balance,
+        'chart_data': json.dumps(chart_data, cls=DjangoJSONEncoder)
     }
     return render(request, 'service/customer/dashboard.html', context)
 
-
-
-
-
-"""@login_required
-def loan_application_view(request):
-    if request.method == 'POST':
-        form = LoanApplicationForm(request.POST)
-        if form.is_valid():
-            loan = form.save(commit=False)
-            loan.user = request.user
-            loan.save()
-            return redirect('application_success')
-    else:
-        form = LoanApplicationForm()
-    
-    return render(request, 'service/loan/apply_loan.html', {'form': form})"""
 
 
 
@@ -164,8 +158,74 @@ def loan_history_view(request):
 
     load_status = LoanApplication.objects.filter(user=request.user)
 
-    approved_loans = load_status.filter(predicted_status='Approved')
-    unapproved_loans = load_status.filter(predicted_status='Not Approved')
-
 
     return render(request, 'service/loan/history.html', {'loan_history': loan_history})
+
+
+
+
+
+def format_stats(queryset, label_key):
+    return [
+        {
+            'label': item[label_key],
+            'approved': item['approved'],
+            'rejected': item['rejected']
+        }
+        for item in queryset
+    ]
+
+
+
+
+def admin_dashboard(request):
+    today = now().date()
+    today_loans = LoanApplication.objects.filter(created_at__date=today).count()
+    total = LoanApplication.objects.count()
+    approved = LoanApplication.objects.filter(predicted_status='Approved').count()
+    denied = LoanApplication.objects.filter(predicted_status='Not Approved').count()
+    avg_score = LoanApplication.objects.aggregate(avg=Avg('prediction_score'))['avg'] or 0
+
+    gender_stats = LoanApplication.objects.values('gender').annotate(
+        approved=Count('id', filter=Q(predicted_status='Approved')),
+        rejected=Count('id', filter=Q(predicted_status='Not Approved'))
+    )
+
+    education = LoanApplication.objects.values('education').annotate(
+        approved=Count('id', filter=Q(predicted_status='Approved')),
+        rejected=Count('id', filter=Q(predicted_status='Not Approved'))
+    )
+
+    property_area = LoanApplication.objects.values('property_area').annotate(
+        approved=Count('id', filter=Q(predicted_status='Approved')),
+        rejected=Count('id', filter=Q(predicted_status='Not Approved'))
+    )
+
+    self_employed = LoanApplication.objects.values('self_employed').annotate(
+        approved=Count('id', filter=Q(predicted_status='Approved')),
+        rejected=Count('id', filter=Q(predicted_status='Not Approved'))
+    )
+
+
+    context = {
+        'today_loans': today_loans,
+        'approved': approved,
+        'denied': denied,
+        'total': total,
+        'approval_rate': (approved / total * 100) if total else 0,
+        'denial_rate': (denied / total * 100) if total else 0,
+        'avg_score': round(avg_score, 2),
+        'alert_drift': avg_score < 0.6 , # Threshold placeholder
+        'gender_stats': list(gender_stats),
+        'property_stats': format_stats(property_area, 'property_area'),
+        'self_employed_stats': format_stats(self_employed, 'self_employed'),
+        'education_stats': format_stats(education, 'education'),
+    }
+    return render(request, 'service/admin/admin_dashboard.html', context)
+
+
+
+def admin_loan_history(request):
+    loan_apps = LoanApplication.objects.all().order_by('-created_at')  # You can paginate if needed
+    return render(request, 'service/admin/admin_loan_history.html', {'loan_apps': loan_apps})
+

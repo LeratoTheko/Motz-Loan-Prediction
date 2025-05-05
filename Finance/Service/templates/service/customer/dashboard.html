@@ -59,10 +59,19 @@
 
 {% include "service/customer/navbar.html" %}
 
-<div class="container greeting text-center">
-    <h2 class="mb-3">Welcome, {{ request.user.first_name|default:request.user.username }} {{ request.user.last_name }}</h2>
-    <p class="text-muted">Here is a summary of your loan activity</p>
+<div class="container greeting text-center mt-5">
+    <h2 class="mb-2 fw-bold mt-5">Motz Financial Services</h2>
+    <p class="text-muted mb-4" style="font-size: 1.1rem;">
+        Customer Dashboard
+    </p>
 
+    <h4 class="mb-1" style="font-weight: 600;">
+        Welcome, {{ request.user.first_name|default:request.user.username }} {{ request.user.last_name }}
+    </h4>
+    <p class="text-muted" style="font-size: 1.05rem;">
+        Below is an overview of your loan activity and financial standing.
+    </p>
+    
     <div class="row g-4 mt-5 text-center">
         <div class="col-md-3">
             <div class="p-4 stat-card">
@@ -107,7 +116,134 @@
     
 
     <a href="{% url 'apply_loan' %}" class="btn btn-primary mt-4" style="background: linear-gradient(to right, #007bff, #00c6ff);">Apply for a New Loan</a>
+
+
+    <div class="container mt-5 mb-5 p-4 stat-card">
+        <h4 class="text-center mb-4" style="font-weight: 600;">Loan Approval Overview</h4>
+        <canvas id="loanChart" height="150"></canvas>
+    </div>
+
+
+    <div class="container mb-5 p-4 stat-card">
+        <h4 class="mb-3 text-center" style="font-weight: 600;">Financial Insights</h4>
+        <ul class="list-group list-group-flush text-start">
+            {% if approved_loans > 0 %}
+            <li class="list-group-item d-flex align-items-start">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <div>
+                    You have <strong>{{ approved_loans }}</strong> approved loan{{ approved_loans|pluralize }} — great progress!
+                </div>
+            </li>
+            {% endif %}
+    
+            {% if unapproved_loans > 0 %}
+            <li class="list-group-item d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2 mt-1"></i>
+                <div>
+                    There {{ unapproved_loans|pluralize:"is,are" }} <strong>{{ unapproved_loans }}</strong> loan application{{ unapproved_loans|pluralize }} not approved. Consider reviewing your credit profile or loan amount.
+                </div>
+            </li>
+            {% endif %}
+    
+            {% if outstanding_balance > 0 %}
+            <li class="list-group-item d-flex align-items-start">
+                <i class="bi bi-currency-dollar text-primary me-2 mt-1"></i>
+                <div>
+                    Your current outstanding balance is <strong>M{{ outstanding_balance|floatformat:2 }}</strong>. Make timely payments to maintain good credit.
+                </div>
+            </li>
+            {% else %}
+            <li class="list-group-item d-flex align-items-start">
+                <i class="bi bi-star-fill text-info me-2 mt-1"></i>
+                <div>
+                    You currently have no outstanding balance. You’re financially in the clear!
+                </div>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    
+    
 </div>
 
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <script>
+        const chartData = JSON.parse('{{ chart_data|escapejs }}');
+    
+        const ctx = document.getElementById('loanChart').getContext('2d');
+    
+        // Create gradient for "Approved"
+        const gradientApproved = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientApproved.addColorStop(0, '#007bff');
+        gradientApproved.addColorStop(1, '#00c6ff');
+    
+        // Create gradient for "Not Approved"
+        const gradientNotApproved = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientNotApproved.addColorStop(0, '#ff416c');
+        gradientNotApproved.addColorStop(1, '#ff4b2b');
+    
+        const loanChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Loan Count',
+                    data: chartData.values,
+                    backgroundColor: [
+                        gradientApproved,
+                        gradientNotApproved
+                    ],
+                    borderRadius: 15,
+                    borderSkipped: false,
+                    barThickness: 300,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#E0F7FA',
+                        titleColor: '#333',
+                        bodyColor: '#333',
+                        borderColor: '#ddd',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: '#f0f0f0'
+                        },
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+    
 </body>
 </html>
