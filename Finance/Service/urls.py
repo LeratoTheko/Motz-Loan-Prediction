@@ -14,4 +14,6 @@ urlpatterns = [
     path('customer/loan-history', views.loan_history_view, name="loan_history"),
     path('motz/admin/dashboard/loan-products-performance', views.admin_dashboard, name="admin_dashboard"),
     path('motz/admin/loan-history/', views.admin_loan_history, name='admin_loan_history'),
+    path('customer/loan/decision/<str:decision>/', views.confirm_loan_amount_view, name='confirm-loan-amount'),
+
 ]

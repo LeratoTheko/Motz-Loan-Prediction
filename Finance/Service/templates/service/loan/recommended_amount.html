@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Approval</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEJc8Y4Vx5p5h7J1V7Y6O7zv8E3RZjEZF1ZVmm6rtTLgZl4vqLO1gt6BoY1/z" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f7fb;
+            font-family: 'Outfit', sans-serif;
+            color: #333;
+        }
+
+        .loan-amount-section {
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 80px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        .loan-amount-section h3 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .loan-amount-section .btn {
+            font-size: 1.1rem;
+            padding: 12px 30px;
+            border-radius: 50px;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .loan-amount-section .btn-success {
+            background-color: #28a745;
+            border: none;
+        }
+
+        .loan-amount-section .btn-success:hover {
+            background-color: #218838;
+            box-shadow: 0 4px 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .loan-amount-section .btn-danger {
+            background-color: #dc3545;
+            border: none;
+        }
+
+        .loan-amount-section .btn-danger:hover {
+            background-color: #c82333;
+            box-shadow: 0 4px 8px rgba(255, 0, 0, 0.2);
+        }
+
+        .loan-amount-section .btn:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
+        .loan-amount-section .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container loan-amount-section">
+        <h3 calss="text-black">Recommended Loan Amount: <strong><span class="fw-bold" style="color: #007bff;">{{ optimized_loan_amount }}</span></strong></h3>
+        <div class="btn-group mt-4">
+            <a href="{% url 'confirm-loan-amount' 'accept' %}" class="btn btn-success" style="text-decoration: none; color: white; background: linear-gradient(to right, #007bff, #00c6ff);">Accept Amount</a>
+            <a href="{% url 'confirm-loan-amount' 'reject' %}" class="btn btn-danger" style="text-decoration: none; color: white; background: linear-gradient(to right, #007bff, #dc3545);">Reject Amount</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pzjw8f+ua7Kw1TIq0WvbI0F5o4uUoIbPpMnkQX4pSjcOHqF4tWR14pDdeUtrVpm9" crossorigin="anonymous"></script>
+</body>
+</html>

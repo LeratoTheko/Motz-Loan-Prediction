@@ -13,15 +13,14 @@ import json
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, Avg, Q
 from django.utils.timezone import now
-
-
-
+from django.contrib.auth.models import Group
 
 from .forms import LoanApplicationForm
 
 from .models import LoanApplication
 
 from .predictor import predict_loan_approval
+from .predictor import predict_loan_amount
 
 
 def base(request):
@@ -48,11 +47,23 @@ def signup_view(request):
         elif User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
         else:
-            User.objects.create_user(first_name=first_name, last_name=last_name, username=username, email=email, password=password1)
+            user = User.objects.create_user(
+                first_name=first_name,
+                last_name=last_name,
+                username=username,
+                email=email,
+                password=password1
+            )
+
+            # Add user to 'Customer' group
+            customer_group, created = Group.objects.get_or_create(name='Customer')
+            user.groups.add(customer_group)
+
             messages.success(request, "Account created successfully. Please log in.")
-            return redirect('login')  # Redirect to login page instead of logging in directly
+            return redirect('login')  # Redirect to login page
 
     return render(request, 'service/auth/signup.html')
+
 
 
 
@@ -64,11 +75,35 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            login(request, user)
-            return redirect('dashboard')
+            if user.groups.filter(name='Customer').exists():
+                login(request, user)
+                return redirect('dashboard')
+            else:
+                messages.error(request, "You do not have permission to log in as a Customer.")
         else:
             messages.error(request, "Invalid credentials.")
+            
     return render(request, 'service/auth/login.html')
+
+
+
+
+def admin_login_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            if user.is_staff and user.groups.filter(name='Admin').exists():
+                login(request, user)
+                return redirect('admin_dashboard')  # Adjust to your admin dashboard URL name
+            else:
+                messages.error(request, "You do not have admin access.")
+        else:
+            messages.error(request, "Invalid credentials.")
+            
+    return render(request, 'service/auth/admin_login.html')
 
 
 
@@ -105,8 +140,6 @@ def dashboard_view(request):
     return render(request, 'service/customer/dashboard.html', context)
 
 
-
-
 @login_required
 def loan_application_view(request):
     if request.method == 'POST':
@@ -115,39 +148,90 @@ def loan_application_view(request):
             application = form.save(commit=False)
             application.user = request.user
 
-            # Prepare data for prediction (ensure mapping is aligned with training)
+            # Preprocess data
+            gender = {'Male': 0, 'Female': 1}.get(application.gender, 0)
+            married = {'No': 0, 'Yes': 1}.get(application.married, 0)
+            education = {'Not Graduate': 0, 'Graduate': 1}.get(application.education, 0)
+            self_employed = {'No': 0, 'Yes': 1}.get(application.self_employed, 0)
+            dependents = {'0': 0, '1': 1, '2': 2, '3+': 3}.get(application.dependents, 0)
+            property_area = {'Rural': 0, 'Semiurban': 1, 'Urban': 2}.get(application.property_area, 0)
+
             data = {
                 'ApplicantIncome': application.applicant_income,
                 'CoapplicantIncome': application.coapplicant_income,
                 'LoanAmount': application.loan_amount,
                 'Loan_Amount_Term': application.loan_amount_term,
                 'Credit_History': application.credit_history,
-                'Gender': {'Male': 0, 'Female': 1}.get(application.gender, 0),
-                'Married': {'No': 0, 'Yes': 1}.get(application.married, 0),
-                'Education': {'Not Graduate': 0, 'Graduate': 1}.get(application.education, 0),
-                'Self_Employed': {'No': 0, 'Yes': 1}.get(application.self_employed, 0),
-                'Dependents': {'0': 0, '1': 1, '2': 2, '3+': 3}.get(application.dependents, 0),
-                'Property_Area': {'Rural': 0, 'Semiurban': 1, 'Urban': 2}.get(application.property_area, 0),
+                'Gender': gender,
+                'Married': married,
+                'Education': education,
+                'Self_Employed': self_employed,
+                'Dependents': dependents,
+                'Property_Area': property_area,
+                'TotalIncome': application.applicant_income + application.coapplicant_income,
+                'IncomeToLoanTerm': (application.applicant_income + application.coapplicant_income) / max(application.loan_amount_term, 1),
             }
 
-            # Predict loan approval
-            prediction, probability = predict_loan_approval(data)
+            # Predict and update with optimized loan amount
+            optimized_loan_amount = float(predict_loan_amount(data))  # ensure native float
+            data['LoanAmount'] = optimized_loan_amount  # override
 
-            # Optionally store prediction in the model
-            application.predicted_status = 'Approved' if prediction else 'Not Approved'
-            application.prediction_score = probability  # Add this field in your model
+            # Save application
+            application.loan_amount = optimized_loan_amount
             application.save()
 
-            return render(request, 'service/loan/loan_success.html', {
-                'user': request.user,
+            # Store complete session data
+            request.session['loan_data'] = data
+            request.session['application_id'] = application.id
+            request.session['optimized_loan_amount'] = optimized_loan_amount
+
+            return render(request, 'service/loan/recommended_amount.html', {
+                'optimized_loan_amount': optimized_loan_amount,
                 'application': application,
-                'prediction': application.predicted_status,
-                'probability': application.prediction_score,
             })
     else:
         form = LoanApplicationForm()
-    
+
     return render(request, 'service/loan/apply_loan.html', {'form': form})
+
+
+
+
+
+@login_required
+def confirm_loan_amount_view(request, decision):
+    app_id = request.session.get('application_id')
+    data = request.session.get('loan_data')
+    optimized_loan_amount = request.session.get('optimized_loan_amount')
+
+    if not app_id or not data or optimized_loan_amount is None:
+        return redirect('apply_loan')  # fallback
+
+    application = LoanApplication.objects.get(id=app_id)
+
+    if decision == 'accept':
+        # Use optimized loan amount for prediction
+        data['LoanAmount'] = optimized_loan_amount
+        prediction, probability = predict_loan_approval(data)
+
+        # Update the loan amount field in model
+        application.loan_amount = optimized_loan_amount
+        application.predicted_status = 'Approved' if prediction else 'Not Approved'
+        application.prediction_score = probability
+        application.save()
+
+        return render(request, 'service/loan/loan_success.html', {
+            'user': request.user,
+            'application': application,
+            'prediction': application.predicted_status,
+            'probability': application.prediction_score,
+            'optimized_loan_amount': optimized_loan_amount,
+        })
+    else:
+        application.predicted_status = 'Rejected by User'
+        application.save()
+        return render(request, 'service/loan/rejected_by_user.html', {'application': application})
+
 
 
 
