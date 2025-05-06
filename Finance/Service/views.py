@@ -119,7 +119,12 @@ def dashboard_view(request):
     user_loans = LoanApplication.objects.filter(user=request.user)
     total_loans = user_loans.count()
     approved_loans = user_loans.filter(predicted_status='Approved').count()
-    unapproved_loans = user_loans.filter(predicted_status='Not Approved').count()
+    
+    unapproved_loans = user_loans.filter(
+        Q(predicted_status__in=['Not Approved', 'Rejected by Customer']) |
+        Q(predicted_status__isnull=True) |
+        Q(predicted_status='')
+    ).count()
 
     outstanding_balance = user_loans.filter(predicted_status='Approved').aggregate(
         total=Sum('loan_amount')
@@ -216,7 +221,7 @@ def confirm_loan_amount_view(request, decision):
 
         # Update the loan amount field in model
         application.loan_amount = optimized_loan_amount
-        application.predicted_status = 'Approved' if prediction else 'Not Approved'
+        application.predicted_status = 'Approved' if prediction else 'Not Approved', '', 'Rejected by Customer'
         application.prediction_score = probability
         application.save()
 
@@ -228,10 +233,9 @@ def confirm_loan_amount_view(request, decision):
             'optimized_loan_amount': optimized_loan_amount,
         })
     else:
-        application.predicted_status = 'Rejected by User'
+        application.predicted_status = 'Rejected by Customer'
         application.save()
         return render(request, 'service/loan/rejected_by_user.html', {'application': application})
-
 
 
 
