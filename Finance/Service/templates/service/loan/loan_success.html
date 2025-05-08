@@ -45,15 +45,24 @@
 
         <div class="row text-start mt-5">
             <div class="col-md-6">
-                <div class="info-box text-center"style="align-items: center;">
+                <div class="info-box text-center" style="align-items: center;">
                     <h3 class="gradient-text">Loan Application Submitted!</h3>
-
+                
                     <h6><span class="label">Prediction Status:</span> {{ prediction }}</h6>
                     <p><span class="label">Confidence Score:</span> {{ probability }}</p>
                     <p><span class="label">Loan Amount:</span> {{ application.loan_amount }}</p>
                     <p><span class="label">Loan Term:</span> {{ application.loan_amount_term }}</p>
-
+                
+                    {% if prediction == 'Not Approved' and recommended_amount %}
+                        <hr>
+                        <p class="text-danger fw-bold">Your application was not approved.</p>
+                        <p class="label">Recommended Amount:</p>
+                        <h4 class="text-primary">M{{ recommended_amount|floatformat:2 }}</h4>
+                        <a href="{% url 'accept_recommended_loan' application.id %}" class="btn mt-3" style="background: linear-gradient(to right, #007bff, #00c6ff);">                            Accept Recommended Amount
+                        </a>
+                    {% endif %}
                 </div>
+                
             </div>
         </div>
         

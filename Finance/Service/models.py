@@ -30,6 +30,8 @@ class LoanApplication(models.Model):
 
     property_area = models.CharField(max_length=20, choices=PROPERTY_AREA_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+    recommended_amount = models.PositiveIntegerField(null=True, blank=True, help_text="Suggested amount if initial request not approved")
+
 
     def __str__(self):
         return f"Loan Application by {self.user.username}"

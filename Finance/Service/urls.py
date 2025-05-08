@@ -16,4 +16,6 @@ urlpatterns = [
     path('motz/admin/loan-history/', views.admin_loan_history, name='admin_loan_history'),
     path('customer/loan/decision/<str:decision>/', views.confirm_loan_amount_view, name='confirm-loan-amount'),
 
+    path('accept-loan/<int:application_id>/', views.accept_recommended_loan, name='accept_recommended_loan'),
+    
 ]

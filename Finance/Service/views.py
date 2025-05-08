@@ -145,6 +145,8 @@ def dashboard_view(request):
     return render(request, 'service/customer/dashboard.html', context)
 
 
+    
+"""
 @login_required
 def loan_application_view(request):
     if request.method == 'POST':
@@ -177,27 +179,100 @@ def loan_application_view(request):
                 'IncomeToLoanTerm': (application.applicant_income + application.coapplicant_income) / max(application.loan_amount_term, 1),
             }
 
-            # Predict and update with optimized loan amount
-            optimized_loan_amount = float(predict_loan_amount(data))  # ensure native float
-            data['LoanAmount'] = optimized_loan_amount  # override
+            # Perform prediction
+            prediction, probability = predict_loan_approval(data)
 
-            # Save application
-            application.loan_amount = optimized_loan_amount
+            # Save application and prediction
+            application.predicted_status = 'Approved' if prediction else 'Not Approved'
+            application.prediction_score = probability
             application.save()
 
-            # Store complete session data
-            request.session['loan_data'] = data
-            request.session['application_id'] = application.id
-            request.session['optimized_loan_amount'] = optimized_loan_amount
-
-            return render(request, 'service/loan/recommended_amount.html', {
-                'optimized_loan_amount': optimized_loan_amount,
+            return render(request, 'service/loan/loan_success.html', {
+                'user': request.user,
                 'application': application,
+                'prediction': application.predicted_status,
+                'probability': application.prediction_score,
             })
     else:
         form = LoanApplicationForm()
 
     return render(request, 'service/loan/apply_loan.html', {'form': form})
+
+
+"""
+
+
+@login_required
+def loan_application_view(request):
+    if request.method == 'POST':
+        form = LoanApplicationForm(request.POST)
+        if form.is_valid():
+            application = form.save(commit=False)
+            application.user = request.user
+
+            # Preprocess categorical fields
+            gender = {'Male': 0, 'Female': 1}.get(application.gender, 0)
+            married = {'No': 0, 'Yes': 1}.get(application.married, 0)
+            education = {'Not Graduate': 0, 'Graduate': 1}.get(application.education, 0)
+            self_employed = {'No': 0, 'Yes': 1}.get(application.self_employed, 0)
+            dependents = {'0': 0, '1': 1, '2': 2, '3+': 3}.get(application.dependents, 0)
+            property_area = {'Rural': 0, 'Semiurban': 1, 'Urban': 2}.get(application.property_area, 0)
+
+            total_income = application.applicant_income + application.coapplicant_income
+            income_to_loan_term = total_income / max(application.loan_amount_term, 1)
+
+            # Dictionary for both models
+            data = {
+                'ApplicantIncome': application.applicant_income,
+                'CoapplicantIncome': application.coapplicant_income,
+                'LoanAmount': application.loan_amount,
+                'Loan_Amount_Term': application.loan_amount_term,
+                'Credit_History': application.credit_history,
+                'Gender': gender,
+                'Married': married,
+                'Education': education,
+                'Self_Employed': self_employed,
+                'Dependents': dependents,
+                'Property_Area': property_area,
+                'TotalIncome': total_income,
+                'IncomeToLoanTerm': income_to_loan_term
+            }
+
+            # Predictions
+            prediction, probability = predict_loan_approval(data)
+            recommended_amount = predict_loan_amount(data)
+
+            # Save results
+            application.predicted_status = 'Approved' if prediction else 'Not Approved'
+            application.prediction_score = probability
+            if not prediction:
+                application.recommended_amount = recommended_amount
+            application.save()
+
+            return render(request, 'service/loan/loan_success.html', {
+                'user': request.user,
+                'application': application,
+                'prediction': application.predicted_status,
+                'probability': application.prediction_score,
+                'recommended_amount': recommended_amount if not prediction else None
+            })
+
+    else:
+        form = LoanApplicationForm()
+
+    return render(request, 'service/loan/apply_loan.html', {'form': form})
+
+
+
+
+@login_required
+def accept_recommended_loan(request, application_id):
+    application = LoanApplication.objects.get(id=application_id, user=request.user)
+    if application.predicted_status == 'Not Approved' and application.recommended_amount:
+        application.loan_amount = application.recommended_amount
+        application.predicted_status = 'Approved (Recommended)'
+        application.save()
+    return redirect('dashboard')
 
 
 
